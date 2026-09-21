@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Slate Control</title>
+<style>
+  :root{
+    --bg:#0B0D0F; --panel:#15181B; --line:#262B2F; --text:#ECE9E2;
+    --dim:#8A9099; --amber:#E8A33D; --red:#E0483E; --green:#4CAF6D;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+       padding:16px 14px 90px;max-width:520px;margin-inline:auto}
+  h1{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:0}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .status{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--dim)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--red)}
+  .dot.on{background:var(--green)}
+
+  .warn{background:var(--panel);border:1px solid var(--red);border-radius:10px;
+        padding:12px 14px;font-size:13px;margin-bottom:14px;display:none;line-height:1.5}
+  .warn a{color:var(--amber)}
+
+  button{font:inherit;cursor:pointer}
+  .btn{padding:9px 14px;border-radius:9px;border:1px solid var(--line);
+       background:var(--panel);color:var(--text);font-size:13px}
+  .btn.primary{background:var(--amber);color:#1a1200;border:none;font-weight:700}
+  .btn:disabled{opacity:.35}
+
+  nav{display:flex;gap:6px;margin-bottom:16px}
+  nav button{flex:1;padding:9px 4px;border-radius:9px;border:1px solid var(--line);
+             background:var(--panel);color:var(--dim);font-size:12px}
+  nav button.sel{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:700}
+
+  section{display:none}
+  section.on{display:block}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+        padding:14px;margin-bottom:14px}
+  .card h2{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim);
+           margin:0 0 4px}
+  .count{font-size:11px;color:var(--dim)}
+  .count.over{color:var(--red);font-weight:700}
+
+  .items{display:flex;flex-direction:column;gap:2px;margin:10px 0}
+  .item{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px}
+  .item:active{background:#1d2126}
+  .item input{width:19px;height:19px;accent-color:var(--amber);flex:none}
+  .item span{flex:1;font-size:14px;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .item .del{border:none;background:none;color:var(--dim);font-size:17px;padding:0 4px}
+
+  .addrow{display:flex;gap:6px;margin-top:8px}
+  .addrow input{flex:1;min-width:0;padding:9px 10px;border-radius:8px;background:#0e1114;
+                border:1px solid var(--line);color:var(--text);font-size:14px;
+                font-family:ui-monospace,Menlo,Consolas,monospace}
+  .addrow input.bad{border-color:var(--red)}
+
+  .sets{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center}
+  select{padding:8px 10px;border-radius:8px;background:#0e1114;border:1px solid var(--line);
+         color:var(--text);font-size:13px;max-width:190px}
+
+  .hint{font-size:11px;color:var(--dim);margin-top:8px;line-height:1.5}
+
+  .sendbar{position:fixed;left:0;right:0;bottom:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+           background:linear-gradient(to top,var(--bg) 70%,transparent);
+           max-width:520px;margin-inline:auto}
+  .sendbar .btn{width:100%;padding:15px}
+  #log{font-size:11px;color:var(--dim);text-align:center;margin-top:7px;min-height:15px}
+
+  /* Pissarra interactiva: imita la pantalla del dispositiu */
+  .slate{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .slate select{width:100%;padding:11px 10px;border-radius:8px;background:#0e1114;
+                border:1px solid var(--line);color:var(--text);font-size:15px;
+                font-family:ui-monospace,Menlo,Consolas,monospace;max-width:none;
+                -webkit-appearance:none;appearance:none;text-align:center}
+  .slate .cam select{font-size:34px;font-weight:700;padding:10px;letter-spacing:.05em}
+  .slate .lens select{font-size:19px}
+  .slate .pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  .slate .cam,.slate .lens{margin-bottom:8px}
+  .tray{margin-top:8px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .tray b{display:block;background:var(--text);color:var(--bg);font-size:11px;
+          letter-spacing:.12em;text-align:center;padding:4px;font-weight:700}
+  .tray select{border:none;border-radius:0;font-size:14px}
+  .livehint{font-size:11px;color:var(--dim);margin-top:10px;line-height:1.5}
+
+  .now{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;font-size:14px;align-items:center}
+  .now b{color:var(--dim);font-weight:400;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+  .now span{font-family:ui-monospace,Menlo,Consolas,monospace}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Slate Control</h1>
+  <div class="status"><div class="dot" id="dot"></div><span id="st">Disconnected</span></div>
+</header>
+
+<div class="warn" id="warn"></div>
+
+<div style="margin-bottom:16px"><button class="btn" id="conn" style="width:100%">Connect via Bluetooth</button></div>
+
+<nav>
+  <button data-t="now" class="sel">On set</button>
+  <button data-t="send">Load</button>
+  <button data-t="cat">Backup</button>
+</nav>
+
+<!-- ---------- CARREGAR ---------- -->
+<section id="send">
+  <div class="card" id="c-lens"></div>
+  <div class="card" id="c-filt"></div>
+  <div class="card" id="c-fps"></div>
+  <div class="card" id="c-shut"></div>
+
+  <div class="card">
+    <h2>Bluetooth name</h2>
+    <div class="now" style="margin-top:10px">
+      <b>Current</b><span id="n-name">—</span>
+    </div>
+    <div class="addrow" style="margin-top:10px">
+      <input id="name-input" placeholder="e.g. Camera Slate A" maxlength="19">
+      <button class="btn" id="name-btn" disabled>Rename</button>
+    </div>
+    <div class="hint">Use this when several slates are on the same shoot, so you can
+      tell them apart in the Bluetooth list. Renaming restarts the device — you will
+      have to reconnect using the new name. The name is also shown on the device,
+      under Settings.</div>
+  </div>
+</section>
+
+<!-- ---------- RODATGE ---------- -->
+<section id="now" class="on">
+  <div class="card">
+    <h2>On the device — live</h2>
+    <div class="slate" style="margin-top:10px">
+      <div class="cam"><select id="s-cam"></select></div>
+      <div class="lens"><select id="s-lens"></select></div>
+      <div class="pair">
+        <select id="s-fps"></select>
+        <select id="s-shut"></select>
+      </div>
+      <div class="tray"><b>TRAY 1</b><select id="s-f1"></select></div>
+      <div class="tray"><b>TRAY 2</b><select id="s-f2"></select></div>
+      <div class="tray"><b>TRAY 3</b><select id="s-f3"></select></div>
+    </div>
+    <div class="livehint">Changes are applied to the device as soon as you pick them.
+      The options come from the lists currently loaded on that device — if something
+      is missing, load it from the Load tab first.</div>
+    <div class="sets" style="margin-top:10px">
+      <button class="btn" id="reread" disabled>Reload from device</button>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- CÒPIA ---------- -->
+<section id="cat">
+  <div class="card">
+    <h2>Backup</h2>
+    <div class="hint" style="margin-top:8px">
+      The catalogue and the saved sets live inside this browser. They are lost if you
+      clear browsing data, switch phones, or open this page in a different browser.
+      Export a file now and then: that is the real backup.
+    </div>
+    <div class="sets" style="margin-top:12px">
+      <button class="btn" id="exp">Export to file</button>
+      <button class="btn" id="impbtn">Import file</button>
+      <input type="file" id="imp" accept="application/json,.json" style="display:none">
+    </div>
+  </div>
+  <div class="card">
+    <h2>Reset</h2>
+    <div class="hint" style="margin-top:8px">Clears the catalogue and saved sets in this browser. The device is not touched.</div>
+    <div class="sets" style="margin-top:12px"><button class="btn" id="wipe">Clear everything</button></div>
+  </div>
+</section>
+
+<div class="sendbar">
+  <button class="btn primary" id="send-btn" disabled>Send to device</button>
+  <div id="log"></div>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- Bluetooth ---------- */
+const SVC   = "6a2f1000-0000-4b8e-8a2d-9c9f6a2f1000";
+const U_CAM = "6a2f1000-0001-4b8e-8a2d-9c9f6a2f1000";
+const U_LEN = "6a2f1000-0002-4b8e-8a2d-9c9f6a2f1000";
+const U_F1  = "6a2f1000-0003-4b8e-8a2d-9c9f6a2f1000";
+const U_F2  = "6a2f1000-0004-4b8e-8a2d-9c9f6a2f1000";
+const U_F3  = "6a2f1000-0005-4b8e-8a2d-9c9f6a2f1000";
+const U_FPS = "6a2f1000-0006-4b8e-8a2d-9c9f6a2f1000";
+const U_SHU = "6a2f1000-0007-4b8e-8a2d-9c9f6a2f1000";
+const U_LIST= "6a2f1000-000a-4b8e-8a2d-9c9f6a2f1000";
+const U_NAME= "6a2f1000-000b-4b8e-8a2d-9c9f6a2f1000";
+
+/* Device limits. Must match the firmware. */
+const MAXLEN = 19;                       // caràcters per nom
+const CAP = { lens:12, filt:24, fps:8, shut:10 };
+const TIPUS = { lens:0, filt:1, fps:2, shut:3 };
+
+let dev=null, srv=null, ch={};
+
+/* ---------- Local storage, with a fallback if the browser blocks it ---------- */
+const mem = {};
+function load(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }
+                    catch(e){ return (k in mem)?mem[k]:d; } }
+function save(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){ mem[k]=v; } }
+
+/* ---------- Data ---------- */
+const DEF = {
+  lens:["18mm T1.9","25mm T1.9","35mm T2.1","50mm T2.1","85mm T2.1"],
+  filt:["-","ND 0.3","ND 0.6","ND 0.9","ND 1.2","ROTAPOLA","BPM 1/8","BPM 1/4","BPM 1/2","HBM 1/4"],
+  fps :["24 fps","25 fps","30 fps","50 fps","60 fps"],
+  shut:["45","90","144","172.8","180","270","1/50","1/100"]
+};
+let cat  = load("slate.cat",  JSON.parse(JSON.stringify(DEF)));      // full catalogue
+let sets = load("slate.sets", {lens:{},filt:{}});                     // saved sets
+let pick = load("slate.pick", {lens:[...DEF.lens],filt:[...DEF.filt],
+                               fps:["24 fps","25 fps","50 fps"],
+                               shut:["45","90","172.8","180","270"]});
+function guarda(){ save("slate.cat",cat); save("slate.sets",sets); save("slate.pick",pick); }
+
+/* Names end up on a display that only knows the basic alphabet: accents and
+   unusual symbols would not render. They are cleaned here, before sending. */
+function neteja(s){
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+          .replace(/[^\x20-\x7E]/g,"").trim();
+}
+
+/* ---------- Selection panels ---------- */
+const PANELS = [
+  {k:"lens", el:"c-lens", tit:"Lenses",  jocs:true },
+  {k:"filt", el:"c-filt", tit:"Filters", jocs:true },
+  {k:"fps",  el:"c-fps",  tit:"FPS",       jocs:false},
+  {k:"shut", el:"c-shut", tit:"Shutter", jocs:false}
+];
+
+function pinta(){
+  for(const p of PANELS){
+    const box=document.getElementById(p.el);
+    const n=pick[p.k].length, max=CAP[p.k];
+    const over=n>max;
+
+    let h=`<h2>${p.tit}</h2><div class="count ${over?"over":""}">`
+        + `${n} of ${max} ${over?"— too many, the device will only take the first "+max:"selected"}</div>`;
+
+    if(p.jocs){
+      const noms=Object.keys(sets[p.k]);
+      h+=`<div class="sets">
+            <select data-set="${p.k}">
+              <option value="">— saved sets —</option>
+              ${noms.map(n=>`<option>${n}</option>`).join("")}
+            </select>
+            <button class="btn" data-savset="${p.k}">Save set</button>
+            <button class="btn" data-delset="${p.k}">Delete set</button>
+          </div>`;
+    }
+
+    h+=`<div class="items">`;
+    for(const it of cat[p.k]){
+      const on=pick[p.k].includes(it);
+      h+=`<label class="item">
+            <input type="checkbox" data-k="${p.k}" value="${it}" ${on?"checked":""}>
+            <span>${it}</span>
+            <button class="del" data-del="${p.k}" data-v="${it}" title="Remove from catalogue">×</button>
+          </label>`;
+    }
+    h+=`</div>
+        <div class="addrow">
+          <input placeholder="Add…" maxlength="${MAXLEN}" data-add="${p.k}">
+          <button class="btn" data-addbtn="${p.k}">+</button>
+        </div>
+        <div class="hint">${MAXLEN} characters max. Anything longer is cut off on the display.</div>`;
+    box.innerHTML=h;
+  }
+  guarda();
+}
+
+document.addEventListener("change",e=>{
+  const cb=e.target.closest('input[type=checkbox][data-k]');
+  if(cb){
+    const k=cb.dataset.k, v=cb.value;
+    if(cb.checked){ if(!pick[k].includes(v)) pick[k].push(v); }
+    else pick[k]=pick[k].filter(x=>x!==v);
+    pinta(); return;
+  }
+  const sel=e.target.closest("select[data-set]");
+  if(sel && sel.value){
+    const k=sel.dataset.set;
+    pick[k]=[...sets[k][sel.value]];
+    pinta(); return;
+  }
+});
+
+document.addEventListener("click",e=>{
+  const t=e.target;
+
+  if(t.dataset.addbtn){
+    const k=t.dataset.addbtn;
+    const inp=document.querySelector(`input[data-add="${k}"]`);
+    const cru=inp.value.trim();
+    const v=neteja(cru);
+    if(!v){ if(cru) alert("This name has no characters the display can draw."); return; }
+    if(v.length>MAXLEN){ inp.classList.add("bad"); return; }
+    // Warn if any character had to be dropped, instead of doing it silently.
+    // Note: "1/4" typed with normal keys is untouched; only symbols like "¼" are dropped.
+    if(v!==cru && !confirm(
+        "The device display can only draw basic letters and symbols.\n\n"
+        + "You typed:   " + cru + "\n"
+        + "Will be saved as: " + v + "\n\n"
+        + "Continue? (for fractions, type them as 1/4)")) return;
+    if(!cat[k].includes(v)) cat[k].push(v);
+    if(!pick[k].includes(v)) pick[k].push(v);
+    inp.value=""; pinta(); return;
+  }
+
+  if(t.dataset.del){
+    const k=t.dataset.del, v=t.dataset.v;
+    e.preventDefault();
+    cat[k]=cat[k].filter(x=>x!==v);
+    pick[k]=pick[k].filter(x=>x!==v);
+    pinta(); return;
+  }
+
+  if(t.dataset.savset){
+    const k=t.dataset.savset;
+    const nom=prompt("Name for this "+(k==="lens"?"lens":"filter")+" set:");
+    if(!nom) return;
+    sets[k][neteja(nom)]=[...pick[k]];
+    pinta(); return;
+  }
+
+  if(t.dataset.delset){
+    const k=t.dataset.delset;
+    const sel=document.querySelector(`select[data-set="${k}"]`);
+    if(!sel.value) return;
+    if(!confirm("Delete the set \""+sel.value+"\"?")) return;
+    delete sets[k][sel.value];
+    pinta(); return;
+  }
+});
+
+/* tabs */
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("sel"));
+  document.querySelectorAll("section").forEach(x=>x.classList.remove("on"));
+  b.classList.add("sel");
+  document.getElementById(b.dataset.t).classList.add("on");
+});
+
+/* ---------- Export / import ---------- */
+document.getElementById("exp").onclick=()=>{
+  const blob=new Blob([JSON.stringify({cat,sets,pick},null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="slate-catalogue-"+new Date().toISOString().slice(0,10)+".json";
+  a.click(); URL.revokeObjectURL(a.href);
+};
+document.getElementById("impbtn").onclick=()=>document.getElementById("imp").click();
+document.getElementById("imp").onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    const d=JSON.parse(await f.text());
+    if(d.cat) cat=d.cat;
+    if(d.sets) sets=d.sets;
+    if(d.pick) pick=d.pick;
+    pinta(); alert("Imported.");
+  }catch(err){ alert("Could not read the file: "+err.message); }
+  e.target.value="";
+};
+document.getElementById("wipe").onclick=()=>{
+  if(!confirm("Are you sure? This clears the catalogue and all sets in this browser.")) return;
+  cat=JSON.parse(JSON.stringify(DEF)); sets={lens:{},filt:{}};
+  pick={lens:[...DEF.lens],filt:[...DEF.filt],fps:["24 fps","25 fps","50 fps"],shut:["45","90","172.8","180","270"]};
+  pinta();
+};
+
+/* ---------- Connection ---------- */
+function avis(html){
+  const w=document.getElementById("warn");
+  if(!html){ w.style.display="none"; return; }
+  w.innerHTML=html; w.style.display="block";
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+const dot=document.getElementById("dot"), st=document.getElementById("st");
+const logEl=document.getElementById("log");
+function log(m){ logEl.textContent=m; }
+
+function connectat(on){
+  dot.classList.toggle("on",on);
+  st.textContent=on?"Connected":"Disconnected";
+  document.getElementById("conn").textContent=on?"Disconnect":"Connect via Bluetooth";
+  document.getElementById("send-btn").disabled=!on;
+  document.getElementById("reread").disabled=!on;
+  document.getElementById("name-btn").disabled=!on;
+  for(const c of CAMPS) document.getElementById(c.id).disabled=!on;
+}
+
+document.getElementById("conn").onclick=async()=>{
+  if(srv && srv.connected){ srv.disconnect(); return; }
+  try{
+    dev=await navigator.bluetooth.requestDevice({filters:[{services:[SVC]}]});
+    dev.addEventListener("gattserverdisconnected",()=>connectat(false));
+    srv=await dev.gatt.connect();
+    const s=await srv.getPrimaryService(SVC);
+
+    // Es demanen una a una i amb nom, perque si en falta alguna se sapiga
+    // quina. La que sol faltar es la de les llistes: vol dir que el firmware
+    // del dispositiu es anterior a aquesta pagina.
+    const get=async(uuid,nom)=>{
+      try{ return await s.getCharacteristic(uuid); }
+      catch(e){ const err=new Error(nom); err.falta=nom; throw err; }
+    };
+    ch.cam=await get(U_CAM,"camera");
+    ch.len=await get(U_LEN,"lens");
+    ch.f1 =await get(U_F1,"filter 1");
+    ch.f2 =await get(U_F2,"filter 2");
+    ch.f3 =await get(U_F3,"filter 3");
+    ch.fps=await get(U_FPS,"fps");
+    ch.shu=await get(U_SHU,"shutter");
+    ch.lst=await get(U_LIST,"lists");
+    ch.nam=await get(U_NAME,"name");
+
+    connectat(true);
+    avis("");
+    await llegeixEstat();
+    log("Connected.");
+  }catch(err){
+    connectat(false);
+    if(err.falta==="lists"||err.falta==="name"){
+      avis("Connected, but this device is running <b>older firmware</b> than this page: "
+          +"it has no list-upload characteristic. Re-upload the current firmware "
+          +"(04_firmware_slate.ino) to the board and try again.");
+      log("Device firmware too old.");
+    } else if(err.falta){
+      avis("Connected, but the device is missing the <b>"+err.falta+"</b> characteristic. "
+          +"The firmware on the board does not match this page.");
+      log("Missing characteristic: "+err.falta);
+    } else {
+      log("Could not connect: "+err.message);
+    }
+  }
+};
+
+const enc=new TextEncoder();
+const dec=new TextDecoder();
+async function txt(c){ try{ return dec.decode(await c.readValue()).trim(); }catch(e){ return "—"; } }
+
+/* Llegeix una llista del dispositiu: es demana entrada a entrada amb
+   [0xF1, tipus, index] i despres es llegeix la caracteristica. Es para a la
+   primera buida, perque les entrades son contigues. */
+async function llegeixLlista(tipus, max){
+  const out=[];
+  for(let i=0;i<max;i++){
+    await ch.lst.writeValue(new Uint8Array([0xF1,tipus,i]));
+    const v=await txt(ch.lst);
+    if(!v || v==="—") break;
+    out.push(v);
+  }
+  return out;
+}
+
+const CAMPS = [
+  {id:"s-cam",  car:"cam", tipus:null, max:0},              // les cameres son fixes
+  {id:"s-lens", car:"len", tipus:TIPUS.lens, max:CAP.lens},
+  {id:"s-fps",  car:"fps", tipus:TIPUS.fps,  max:CAP.fps},
+  {id:"s-shut", car:"shu", tipus:TIPUS.shut, max:CAP.shut},
+  {id:"s-f1",   car:"f1",  tipus:TIPUS.filt, max:CAP.filt},
+  {id:"s-f2",   car:"f2",  tipus:TIPUS.filt, max:CAP.filt},
+  {id:"s-f3",   car:"f3",  tipus:TIPUS.filt, max:CAP.filt}
+];
+const CAMERES = ["CAM A","CAM B","CAM C","CAM D","CAM E","CAM F"];
+
+function omple(sel, opcions, actual){
+  sel.innerHTML="";
+  if(actual && !opcions.includes(actual)) opcions=[actual,...opcions];  // valor que ja no es a la llista
+  for(const o of opcions){
+    const e=document.createElement("option");
+    e.textContent=o;
+    if(o===actual) e.selected=true;
+    sel.appendChild(e);
+  }
+}
+
+async function llegeixEstat(){
+  log("Reading device…");
+  const lens = await llegeixLlista(TIPUS.lens, CAP.lens);
+  const fps  = await llegeixLlista(TIPUS.fps,  CAP.fps);
+  const shut = await llegeixLlista(TIPUS.shut, CAP.shut);
+  const filt = await llegeixLlista(TIPUS.filt, CAP.filt);
+
+  for(const c of CAMPS){
+    const actual = await txt(ch[c.car]);
+    let opts;
+    if(c.id==="s-cam")       opts=CAMERES;
+    else if(c.car==="len")   opts=lens;
+    else if(c.car==="fps")   opts=fps;
+    else if(c.car==="shu")   opts=shut;
+    else                     opts=filt;
+    omple(document.getElementById(c.id), [...opts], actual);
+  }
+
+  const nomActual = await txt(ch.nam);
+  document.getElementById("n-name").textContent = nomActual;
+  const ni = document.getElementById("name-input");
+  if (document.activeElement !== ni) ni.value = (nomActual==="—") ? "" : nomActual;
+  log("Ready.");
+}
+
+/* Canviar un desplegable escriu de seguida: el dispositiu ho aplica en directe */
+for(const c of CAMPS){
+  document.getElementById(c.id).onchange = async e=>{
+    try{
+      await ch[c.car].writeValue(enc.encode(e.target.value));
+      log("Sent: "+e.target.value);
+      // Els filtres poden intercanviar-se de safata al dispositiu: cal rellegir
+      if(c.car.startsWith("f")) setTimeout(()=>llegeixEstat(),700);
+    }catch(err){ log("Failed: "+err.message); }
+  };
+}
+
+document.getElementById("reread").onclick=()=>llegeixEstat().then(()=>log("Reloaded."));
+
+/* ---------- Sending the lists ---------- */
+function paquet(bytes){ return new Uint8Array(bytes); }
+
+async function envia(){
+  const btn=document.getElementById("send-btn");
+  btn.disabled=true;
+  try{
+    await ch.lst.writeValue(paquet([0xF0]));               // begin
+
+    let total=0;
+    for(const p of PANELS){
+      const t=TIPUS[p.k];
+      const llista=pick[p.k].slice(0,CAP[p.k]).map(neteja).filter(Boolean);
+      for(let i=0;i<llista.length;i++){
+        const b=enc.encode(llista[i].slice(0,MAXLEN));
+        await ch.lst.writeValue(paquet([t,i,...b]));
+        total++;
+        log("Sending… "+total);
+      }
+      await ch.lst.writeValue(paquet([0xFF,t,llista.length]));
+    }
+
+    await ch.lst.writeValue(paquet([0xFE]));               // commit
+    log("Lists loaded ("+total+" entries).");
+    setTimeout(()=>llegeixEstat(),1200);
+  }catch(err){
+    log("Send failed: "+err.message);
+  }
+  btn.disabled=false;
+}
+document.getElementById("send-btn").onclick=envia;
+
+document.getElementById("name-btn").onclick=async()=>{
+  const cru=document.getElementById("name-input").value.trim();
+  const v=neteja(cru);
+  if(!v){ alert("Enter a name first."); return; }
+  if(v.length>19){ alert("Name too long (max 19 characters)."); return; }
+  if(!confirm("Rename this device to \""+v+"\"?\n\n"
+     +"It will restart and you will have to reconnect via Bluetooth "
+     +"using the new name.")) return;
+  try{
+    await ch.nam.writeValue(enc.encode(v));
+    log("Renaming… the device is restarting.");
+  }catch(err){ log("Rename failed: "+err.message); }
+};
+
+/* ---------- Browser warnings ---------- */
+(function(){
+  const w=document.getElementById("warn");
+  if(!("bluetooth" in navigator)){
+    w.style.display="block";
+    w.innerHTML="This browser cannot use Bluetooth. <b>On iPhone, Safari does not "
+      +"support it in any version</b> — use the Bluefy app. On Android, open this "
+      +"page in Chrome.";
+    document.getElementById("conn").disabled=true;
+  } else if(location.protocol!=="https:" && location.hostname!=="localhost"){
+    w.style.display="block";
+    w.innerHTML="This page is not being served over HTTPS, and browser Bluetooth only "
+      +"works over HTTPS. Publish it on GitHub Pages (or similar) and open it from there.";
+  }
+})();
+
+pinta();
+connectat(false);
+</script>
+</body>
+</html>
