@@ -115,6 +115,25 @@
   <div class="card" id="c-shut"></div>
 
   <div class="card">
+    <h2>Display</h2>
+    <div class="now" style="margin-top:10px;grid-template-columns:auto 1fr">
+      <b>Orientation</b>
+      <select id="cfg-rot" disabled style="max-width:none">
+        <option value="0">Vertical</option>
+        <option value="1">Horizontal</option>
+        <option value="2">Vertical 180</option>
+        <option value="3">Horizontal 180</option>
+      </select>
+      <b>Colours</b>
+      <select id="cfg-inv" disabled style="max-width:none">
+        <option value="0">Normal — black on white</option>
+        <option value="1">Inverted — white on black</option>
+      </select>
+    </div>
+    <div class="hint">Applied straight away. Same as the Settings menu on the device.</div>
+  </div>
+
+  <div class="card">
     <h2>Bluetooth name</h2>
     <div class="now" style="margin-top:10px">
       <b>Current</b><span id="n-name">—</span>
@@ -149,8 +168,12 @@
       The options come from the lists currently loaded on that device — if something
       is missing, load it from the Load tab first.</div>
     <div class="sets" style="margin-top:10px">
+      <button class="btn" id="clean" disabled>Clean screen</button>
       <button class="btn" id="reread" disabled>Reload from device</button>
     </div>
+    <div class="hint">Each change here uses a fast refresh, which can leave faint
+      traces. "Clean screen" forces a full refresh. The device also does one by itself
+      when you disconnect.</div>
   </div>
 </section>
 
@@ -195,6 +218,8 @@ const U_FPS = "6a2f1000-0006-4b8e-8a2d-9c9f6a2f1000";
 const U_SHU = "6a2f1000-0007-4b8e-8a2d-9c9f6a2f1000";
 const U_LIST= "6a2f1000-000a-4b8e-8a2d-9c9f6a2f1000";
 const U_NAME= "6a2f1000-000b-4b8e-8a2d-9c9f6a2f1000";
+const U_CFG = "6a2f1000-000c-4b8e-8a2d-9c9f6a2f1000";
+const U_CMT = "6a2f1000-0008-4b8e-8a2d-9c9f6a2f1000";
 
 /* Device limits. Must match the firmware. */
 const MAXLEN = 19;                       // caràcters per nom
@@ -344,11 +369,17 @@ document.addEventListener("click",e=>{
 });
 
 /* tabs */
+function mostraBarra(){
+  // "Send to device" nomes te sentit a Load: a On set cada canvi ja s'envia sol
+  const actiu=document.querySelector("nav button.sel").dataset.t;
+  document.querySelector(".sendbar").style.display = (actiu==="send") ? "" : "none";
+}
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("nav button").forEach(x=>x.classList.remove("sel"));
   document.querySelectorAll("section").forEach(x=>x.classList.remove("on"));
   b.classList.add("sel");
   document.getElementById(b.dataset.t).classList.add("on");
+  mostraBarra();
 });
 
 /* ---------- Export / import ---------- */
@@ -398,6 +429,7 @@ function connectat(on){
   document.getElementById("reread").disabled=!on;
   document.getElementById("name-btn").disabled=!on;
   for(const c of CAMPS) document.getElementById(c.id).disabled=!on;
+  for(const id of ["clean","cfg-rot","cfg-inv"]) document.getElementById(id).disabled=!on;
 }
 
 document.getElementById("conn").onclick=async()=>{
@@ -424,6 +456,8 @@ document.getElementById("conn").onclick=async()=>{
     ch.shu=await get(U_SHU,"shutter");
     ch.lst=await get(U_LIST,"lists");
     ch.nam=await get(U_NAME,"name");
+    ch.cfg=await get(U_CFG,"display settings");
+    ch.cmt=await get(U_CMT,"commit");
 
     connectat(true);
     avis("");
@@ -431,7 +465,7 @@ document.getElementById("conn").onclick=async()=>{
     log("Connected.");
   }catch(err){
     connectat(false);
-    if(err.falta==="lists"||err.falta==="name"){
+    if(err.falta==="lists"||err.falta==="name"||err.falta==="display settings"){
       avis("Connected, but this device is running <b>older firmware</b> than this page: "
           +"it has no list-upload characteristic. Re-upload the current firmware "
           +"(04_firmware_slate.ino) to the board and try again.");
@@ -504,6 +538,11 @@ async function llegeixEstat(){
     omple(document.getElementById(c.id), [...opts], actual);
   }
 
+  try{
+    const cfg=new Uint8Array((await ch.cfg.readValue()).buffer);
+    document.getElementById("cfg-rot").value=String(cfg[0]);
+    document.getElementById("cfg-inv").value=cfg[1]?"1":"0";
+  }catch(e){}
   const nomActual = await txt(ch.nam);
   document.getElementById("n-name").textContent = nomActual;
   const ni = document.getElementById("name-input");
@@ -557,6 +596,20 @@ async function envia(){
 }
 document.getElementById("send-btn").onclick=envia;
 
+async function enviaConfig(){
+  const r=+document.getElementById("cfg-rot").value;
+  const i=+document.getElementById("cfg-inv").value;
+  try{ await ch.cfg.writeValue(new Uint8Array([r,i])); log("Display updated."); }
+  catch(err){ log("Failed: "+err.message); }
+}
+document.getElementById("cfg-rot").onchange=enviaConfig;
+document.getElementById("cfg-inv").onchange=enviaConfig;
+
+document.getElementById("clean").onclick=async()=>{
+  try{ await ch.cmt.writeValue(new Uint8Array([2])); log("Full refresh…"); }
+  catch(err){ log("Failed: "+err.message); }
+};
+
 document.getElementById("name-btn").onclick=async()=>{
   const cru=document.getElementById("name-input").value.trim();
   const v=neteja(cru);
@@ -589,6 +642,7 @@ document.getElementById("name-btn").onclick=async()=>{
 
 pinta();
 connectat(false);
+mostraBarra();
 </script>
 </body>
 </html>
